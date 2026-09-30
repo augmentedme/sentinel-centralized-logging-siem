@@ -1,0 +1,51 @@
+# =====================================================================
+# Secret-safe .gitignore. This file is committed FIRST, before any code.
+# =====================================================================
+
+# --- Terraform --------------------------------------------------------
+# State files can contain secrets and resource details: never commit.
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
+**/.terraform/*
+crash.log
+crash.*.log
+*.tfplan
+tfplan
+# Variable files hold environment-specific values (IPs, emails).
+# Only the *.example template is committed.
+*.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+# NOTE: .terraform.lock.hcl IS committed (pins provider checksums).
+
+# --- Secrets and keys -------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+*.crt
+id_rsa*
+id_ed25519*
+*.kdbx
+secrets.*
+*credentials*
+
+# --- Python -----------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# --- Editors and OS ---------------------------------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
