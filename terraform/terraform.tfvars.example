@@ -1,0 +1,12 @@
+# Copy this file to terraform.tfvars and fill in your values.
+# terraform.tfvars is git-ignored: never commit it.
+
+alert_email = "you@example.com"
+
+# Optional overrides (defaults shown)
+# location                 = "australiaeast"
+# workspace_retention_days = 90
+# daily_cap_gb             = 2
+# bruteforce_threshold     = 5
+# budget_amount            = 100
+# budget_start_date        = "2026-09-01T00:00:00Z"

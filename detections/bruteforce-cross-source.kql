@@ -1,0 +1,32 @@
+// Brute-force login attempts across sources
+// Fires when one source IP causes ${threshold}+ failed logins in ${window_minutes} minutes,
+// counting the web app, Linux SSH, Windows and Entra ID together.
+// union isfuzzy=true lets the rule run even if a source has no data yet.
+let threshold = ${threshold};
+let window = ${window_minutes}m;
+union isfuzzy=true
+    (WebAppAudit_CL
+        | extend e = parse_json(RawData)
+        | where tostring(e.event) == "login_failed"
+        | project TimeGenerated, Source = "Web app", Account = tostring(e.user), SourceIP = tostring(e.src_ip)),
+    (Syslog
+        | where Facility in ("auth", "authpriv") and ProcessName == "sshd"
+        | where SyslogMessage has_any ("Failed password", "Invalid user")
+        | extend SourceIP = extract(@"from (\d{1,3}(?:\.\d{1,3}){3})", 1, SyslogMessage),
+                 Account  = extract(@"(?:[Ii]nvalid user|Failed password for(?: invalid user)?) (\S+)", 1, SyslogMessage)
+        | project TimeGenerated, Source = "Linux SSH", Account, SourceIP),
+    (SecurityEvent
+        | where EventID == 4625
+        | project TimeGenerated, Source = "Windows", Account = TargetUserName, SourceIP = IpAddress),
+    (SigninLogs
+        | where ResultType in ("50126", "50053", "50055")
+        | project TimeGenerated, Source = "Entra ID", Account = UserPrincipalName, SourceIP = IPAddress)
+| where TimeGenerated > ago(window)
+| where isnotempty(SourceIP) and SourceIP != "-"
+| summarize FailedAttempts = count(),
+            Sources  = make_set(Source),
+            Accounts = make_set(Account, 20),
+            FirstSeen = min(TimeGenerated),
+            LastSeen  = max(TimeGenerated)
+    by SourceIP
+| where FailedAttempts >= threshold
