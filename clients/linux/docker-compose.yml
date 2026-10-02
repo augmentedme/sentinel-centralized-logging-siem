@@ -1,0 +1,33 @@
+# Staff Portal container. Started by setup-web01.sh from /opt/siem/clients/linux.
+name: siem
+
+services:
+  webapp:
+    build:
+      context: ../../app
+    image: siem-webapp:1.0
+    container_name: webapp
+    restart: unless-stopped
+    # Secrets generated on the host by setup-web01.sh (root-only, never in Git).
+    env_file:
+      - /opt/siem/.env
+    # Published on localhost only: the internet reaches it through Nginx.
+    ports:
+      - "127.0.0.1:8000:8000"
+    # Security audit log written to the host for the Azure Monitor Agent.
+    volumes:
+      - /var/log/webapp:/var/log/webapp
+    # Hardening
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # Container stdout/stderr -> host syslog facility local0 -> Syslog table.
+    logging:
+      driver: syslog
+      options:
+        syslog-facility: local0
+        tag: "docker-{{.Name}}"

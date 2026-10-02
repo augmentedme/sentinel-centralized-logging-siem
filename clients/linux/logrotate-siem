@@ -1,0 +1,26 @@
+# Rotation for the log files collected by the Azure Monitor Agent.
+# (The default nginx logrotate config only covers *.log.)
+/var/log/nginx/access.json {
+    daily
+    rotate 7
+    missingok
+    notifempty
+    compress
+    delaycompress
+    create 0640 www-data adm
+    sharedscripts
+    postrotate
+        invoke-rc.d nginx rotate >/dev/null 2>&1 || true
+    endscript
+}
+
+# The app keeps the file open, so copytruncate is used.
+/var/log/webapp/audit.log {
+    daily
+    rotate 7
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+}
