@@ -78,9 +78,15 @@ variable "bruteforce_threshold" {
 }
 
 variable "bruteforce_window_minutes" {
-  description = "Look-back window for the brute-force alert, in minutes."
+  description = "Look-back window for the brute-force alert, in minutes. Longer than the run frequency so late-arriving logs are not missed."
   type        = number
-  default     = 10
+  default     = 15
+}
+
+variable "bruteforce_frequency_minutes" {
+  description = "How often the brute-force alert runs, in minutes."
+  type        = number
+  default     = 5
 }
 
 variable "webscan_threshold" {
@@ -93,6 +99,12 @@ variable "webscan_window_minutes" {
   description = "Look-back window for the web scanning alert, in minutes."
   type        = number
   default     = 15
+}
+
+variable "webscan_frequency_minutes" {
+  description = "How often the web scanning alert runs, in minutes."
+  type        = number
+  default     = 5
 }
 
 variable "create_budget" {

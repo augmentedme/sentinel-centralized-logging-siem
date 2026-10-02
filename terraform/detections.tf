@@ -1,12 +1,16 @@
 # ---------------------------------------------------------------------
 # Analytics rules (alerts). The KQL lives in /detections so it can be
 # reviewed and reused for hunting; thresholds are Terraform variables.
+#
+# Each rule runs every 5 minutes over a 15-minute window. The overlap
+# catches logs that arrive a few minutes late; incident grouping merges
+# the repeated alerts for the same IP into one incident.
 # ---------------------------------------------------------------------
 resource "azurerm_sentinel_alert_rule_scheduled" "bruteforce" {
   name                       = "siem-bruteforce-cross-source"
   log_analytics_workspace_id = azurerm_sentinel_log_analytics_workspace_onboarding.sentinel.workspace_id
   display_name               = "Brute-force login attempts across sources"
-  description                = "One source IP produced ${var.bruteforce_threshold} or more failed logins within ${var.bruteforce_window_minutes} minutes across the web app, Linux SSH, Windows and Entra ID."
+  description                = "One source IP produced ${var.bruteforce_threshold} or more failed logins within ${var.bruteforce_window_minutes} minutes across the web app, Linux SSH, Windows, Entra ID and Okta."
   severity                   = "Medium"
   enabled                    = true
 
@@ -14,7 +18,7 @@ resource "azurerm_sentinel_alert_rule_scheduled" "bruteforce" {
     threshold      = var.bruteforce_threshold
     window_minutes = var.bruteforce_window_minutes
   })
-  query_frequency   = "PT${var.bruteforce_window_minutes}M"
+  query_frequency   = "PT${var.bruteforce_frequency_minutes}M"
   query_period      = "PT${var.bruteforce_window_minutes}M"
   trigger_operator  = "GreaterThan"
   trigger_threshold = 0
@@ -37,6 +41,16 @@ resource "azurerm_sentinel_alert_rule_scheduled" "bruteforce" {
   event_grouping {
     aggregation_method = "AlertPerResult"
   }
+
+  incident {
+    create_incident_enabled = true
+    grouping {
+      enabled                 = true
+      lookback_duration       = "PT1H"
+      reopen_closed_incidents = false
+      entity_matching_method  = "AllEntities"
+    }
+  }
 }
 
 resource "azurerm_sentinel_alert_rule_scheduled" "webscan" {
@@ -51,7 +65,7 @@ resource "azurerm_sentinel_alert_rule_scheduled" "webscan" {
     threshold      = var.webscan_threshold
     window_minutes = var.webscan_window_minutes
   })
-  query_frequency   = "PT${var.webscan_window_minutes}M"
+  query_frequency   = "PT${var.webscan_frequency_minutes}M"
   query_period      = "PT${var.webscan_window_minutes}M"
   trigger_operator  = "GreaterThan"
   trigger_threshold = 0
@@ -73,6 +87,16 @@ resource "azurerm_sentinel_alert_rule_scheduled" "webscan" {
 
   event_grouping {
     aggregation_method = "AlertPerResult"
+  }
+
+  incident {
+    create_incident_enabled = true
+    grouping {
+      enabled                 = true
+      lookback_duration       = "PT1H"
+      reopen_closed_incidents = false
+      entity_matching_method  = "AllEntities"
+    }
   }
 
   depends_on = [azapi_resource.custom_table]

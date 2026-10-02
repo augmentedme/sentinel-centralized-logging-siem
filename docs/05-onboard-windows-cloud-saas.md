@@ -82,7 +82,7 @@ Allow 10 to 20 minutes for the first events.
 mstsc /v:<win-01-public-ip>
 ```
 
-Sign in as `siemadmin`. **Event Viewer > Windows Logs > Security** shows the 4625 events. Not required for the build, but useful if a client asks how you would check locally.
+Sign in as `siemadmin`. **Event Viewer > Windows Logs > Security** shows the 4625 events. Not required for the build, but useful for confirming events locally on the host.
 
 ---
 

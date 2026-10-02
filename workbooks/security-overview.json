@@ -1,0 +1,206 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "## SIEM Security Overview\nCentralised view of all eight log sources: ingestion health, authentication failures across sources, web traffic and attack indicators, and Sentinel incidents. Use the time range to look back over the collected history."
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "8d5a3c1e-2f4b-4a6c-9e7d-1b3c5a7e9f01",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "label": "Time range",
+            "type": 4,
+            "isRequired": true,
+            "value": {
+              "durationMs": 604800000
+            },
+            "typeSettings": {
+              "selectableValues": [
+                {
+                  "durationMs": 3600000
+                },
+                {
+                  "durationMs": 14400000
+                },
+                {
+                  "durationMs": 86400000
+                },
+                {
+                  "durationMs": 259200000
+                },
+                {
+                  "durationMs": 604800000
+                },
+                {
+                  "durationMs": 1209600000
+                }
+              ],
+              "allowCustom": true
+            }
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "union isfuzzy=true withsource=TableName NginxAccess_CL, WebAppAudit_CL, Syslog, SecurityEvent, Event, AzureActivity, SigninLogs, AuditLogs, OktaV2_CL\n| extend Source = case(\n    TableName == \"NginxAccess_CL\", \"Web server (Nginx)\",\n    TableName == \"WebAppAudit_CL\", \"Web application (audit)\",\n    TableName == \"Syslog\" and Facility == \"local0\", \"Container\",\n    TableName == \"Syslog\", \"Linux system\",\n    TableName in (\"SecurityEvent\", \"Event\"), \"Windows\",\n    TableName == \"AzureActivity\", \"Cloud provider (Azure)\",\n    TableName in (\"SigninLogs\", \"AuditLogs\"), \"Directory (Entra ID)\",\n    TableName == \"OktaV2_CL\", \"SaaS (Okta)\",\n    TableName)\n| summarize Events = count(), LastEvent = max(TimeGenerated) by Source\n// Continuous sources should report within 60 minutes. Identity sources only log\n// when someone signs in, so they get a 24-hour allowance.\n| lookup kind=leftouter (datatable(Source: string, ExpectedWithinMinutes: int) [\n    \"Directory (Entra ID)\", 1440,\n    \"SaaS (Okta)\", 1440\n  ]) on Source\n| extend ExpectedWithinMinutes = coalesce(ExpectedWithinMinutes, 60)\n| extend MinutesSinceLastEvent = datetime_diff(\"minute\", now(), LastEvent)\n| extend Status = iff(MinutesSinceLastEvent > ExpectedWithinMinutes, \"Check source\", \"Healthy\")\n| project Source, Status, Events, LastEvent, MinutesSinceLastEvent, ExpectedWithinMinutes\n| order by Source asc",
+        "size": 0,
+        "title": "Ingestion health: last event per source",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "Status",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "icons",
+                "thresholdsGrid": [
+                  {
+                    "operator": "==",
+                    "thresholdValue": "Healthy",
+                    "representation": "success",
+                    "text": "{0}{1}"
+                  },
+                  {
+                    "operator": "Default",
+                    "thresholdValue": null,
+                    "representation": "warning",
+                    "text": "{0}{1}"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "customWidth": "50",
+      "name": "ingestion-health"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "union isfuzzy=true withsource=TableName NginxAccess_CL, WebAppAudit_CL, Syslog, SecurityEvent, Event, AzureActivity, SigninLogs, AuditLogs, OktaV2_CL\n| extend Source = case(\n    TableName == \"NginxAccess_CL\", \"Web server (Nginx)\",\n    TableName == \"WebAppAudit_CL\", \"Web application (audit)\",\n    TableName == \"Syslog\" and Facility == \"local0\", \"Container\",\n    TableName == \"Syslog\", \"Linux system\",\n    TableName in (\"SecurityEvent\", \"Event\"), \"Windows\",\n    TableName == \"AzureActivity\", \"Cloud provider (Azure)\",\n    TableName in (\"SigninLogs\", \"AuditLogs\"), \"Directory (Entra ID)\",\n    TableName == \"OktaV2_CL\", \"SaaS (Okta)\",\n    TableName)\n| summarize Events = count() by Source, bin(TimeGenerated, {TimeRange:grain})",
+        "size": 0,
+        "title": "Events per source over time",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "customWidth": "50",
+      "name": "events-over-time"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let AuthFailures = union isfuzzy=true\n    (WebAppAudit_CL\n        | extend e = parse_json(RawData)\n        | where tostring(e.event) == \"login_failed\"\n        | project TimeGenerated, Source = \"Web app\", Account = tostring(e.user), SourceIP = tostring(e.src_ip)),\n    (Syslog\n        | where Facility in (\"auth\", \"authpriv\") and ProcessName == \"sshd\"\n        | where SyslogMessage has_any (\"Failed password\", \"Invalid user\")\n        | extend SourceIP = extract(@\"from (\\d{1,3}(?:\\.\\d{1,3}){3})\", 1, SyslogMessage),\n                 Account  = extract(@\"(?:[Ii]nvalid user|Failed password for(?: invalid user)?) (\\S+)\", 1, SyslogMessage)\n        | project TimeGenerated, Source = \"Linux SSH\", Account, SourceIP),\n    (SecurityEvent\n        | where EventID == 4625\n        | project TimeGenerated, Source = \"Windows\", Account = TargetUserName, SourceIP = IpAddress),\n    (SigninLogs\n        | where ResultType in (\"50126\", \"50053\", \"50055\")\n        | project TimeGenerated, Source = \"Entra ID\", Account = UserPrincipalName, SourceIP = IPAddress),\n    (OktaV2_CL\n        | where tostring(column_ifexists(\"EventOriginalType\", \"\")) == \"user.session.start\"\n        | where tostring(column_ifexists(\"EventResult\", \"\")) =~ \"Failure\"\n        | project TimeGenerated, Source = \"Okta\",\n                  Account  = tostring(column_ifexists(\"ActorUsername\", \"\")),\n                  SourceIP = tostring(column_ifexists(\"SrcIpAddr\", \"\")));\nAuthFailures\n| summarize Failures = count() by Source, bin(TimeGenerated, {TimeRange:grain})",
+        "size": 0,
+        "title": "Failed logins by source over time",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "customWidth": "50",
+      "name": "auth-failures-over-time"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let AuthFailures = union isfuzzy=true\n    (WebAppAudit_CL\n        | extend e = parse_json(RawData)\n        | where tostring(e.event) == \"login_failed\"\n        | project TimeGenerated, Source = \"Web app\", Account = tostring(e.user), SourceIP = tostring(e.src_ip)),\n    (Syslog\n        | where Facility in (\"auth\", \"authpriv\") and ProcessName == \"sshd\"\n        | where SyslogMessage has_any (\"Failed password\", \"Invalid user\")\n        | extend SourceIP = extract(@\"from (\\d{1,3}(?:\\.\\d{1,3}){3})\", 1, SyslogMessage),\n                 Account  = extract(@\"(?:[Ii]nvalid user|Failed password for(?: invalid user)?) (\\S+)\", 1, SyslogMessage)\n        | project TimeGenerated, Source = \"Linux SSH\", Account, SourceIP),\n    (SecurityEvent\n        | where EventID == 4625\n        | project TimeGenerated, Source = \"Windows\", Account = TargetUserName, SourceIP = IpAddress),\n    (SigninLogs\n        | where ResultType in (\"50126\", \"50053\", \"50055\")\n        | project TimeGenerated, Source = \"Entra ID\", Account = UserPrincipalName, SourceIP = IPAddress),\n    (OktaV2_CL\n        | where tostring(column_ifexists(\"EventOriginalType\", \"\")) == \"user.session.start\"\n        | where tostring(column_ifexists(\"EventResult\", \"\")) =~ \"Failure\"\n        | project TimeGenerated, Source = \"Okta\",\n                  Account  = tostring(column_ifexists(\"ActorUsername\", \"\")),\n                  SourceIP = tostring(column_ifexists(\"SrcIpAddr\", \"\")));\nAuthFailures\n| where isnotempty(SourceIP) and SourceIP != \"-\"\n| summarize Failures = count(), Sources = make_set(Source), DistinctAccounts = dcount(Account), LastSeen = max(TimeGenerated) by SourceIP\n| top 10 by Failures",
+        "size": 0,
+        "title": "Top 10 source IPs with failed logins",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table"
+      },
+      "customWidth": "50",
+      "name": "top-failed-ips"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "NginxAccess_CL\n| extend e = parse_json(RawData)\n| extend SourceIP = tostring(e.remote_addr), Uri = tostring(e.request_uri), Status = toint(e.status)\n| extend StatusClass = strcat(tostring(Status / 100), \"xx\")\n| summarize Requests = count() by StatusClass, bin(TimeGenerated, {TimeRange:grain})",
+        "size": 0,
+        "title": "Web responses by status class over time",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "customWidth": "50",
+      "name": "web-status"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "NginxAccess_CL\n| extend e = parse_json(RawData)\n| extend SourceIP = tostring(e.remote_addr), Uri = tostring(e.request_uri), Status = toint(e.status)\n| where Uri has_any (dynamic([\"/.env\", \"/.git\", \"/wp-admin\", \"/wp-login\", \"/xmlrpc.php\", \"/phpmyadmin\", \"/admin.php\", \"/config\", \"/cgi-bin\", \"/vendor/phpunit\", \"/server-status\", \"/.aws\"]))\n| summarize Probes = count(), SourceIPs = dcount(SourceIP), LastSeen = max(TimeGenerated) by Uri\n| top 15 by Probes",
+        "size": 0,
+        "title": "Most probed sensitive paths",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table"
+      },
+      "customWidth": "50",
+      "name": "probed-paths"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "WebAppAudit_CL\n| extend e = parse_json(RawData)\n| summarize Events = count() by Event = tostring(e.event)\n| order by Events desc",
+        "size": 0,
+        "title": "Web application security events",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "barchart"
+      },
+      "customWidth": "50",
+      "name": "app-events"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "SecurityIncident\n| summarize arg_max(LastModifiedTime, *) by IncidentNumber\n| where Title has_any (\"Brute-force\", \"Web vulnerability scanning\")\n| project IncidentNumber, Title, Severity, Status, CreatedTime, LastModifiedTime\n| order by CreatedTime desc",
+        "size": 0,
+        "title": "Sentinel incidents from this project's rules",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table"
+      },
+      "customWidth": "100",
+      "name": "incidents"
+    }
+  ],
+  "fallbackResourceIds": [],
+  "fromTemplateId": "sentinel-UserWorkbook",
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

@@ -149,7 +149,7 @@ It should show `active (running)`. Allow 10 to 20 minutes for the first data.
 ## Step 7: Verify in Sentinel (Defender portal)
 
 **security.microsoft.com > Investigation & response > Hunting > Advanced hunting.** Paste each query into the query editor and click **Run query**.
-Save each one for reuse in the demo: **Save > Save as**, then:
+Save each one for reuse: **Save > Save as**, then:
 
 - **Name:** as in the comment on the first line of the query (for example `Web server - NginxAccess_CL`).
 - **Location:** for the first query, select **Shared queries > New folder** and name the folder `Source validation`. For the following queries, select the existing `Source validation` folder.

@@ -1,11 +1,6 @@
-// Brute-force login attempts across sources
-// Fires when one source IP causes ${threshold}+ failed logins in ${window_minutes} minutes,
-// counting the web app, Linux SSH, Windows, Entra ID and Okta together.
-// union isfuzzy=true lets the rule run even if a source has no data yet.
-// column_ifexists() keeps the Okta branch safe if the connector schema changes.
-let threshold = ${threshold};
-let window = ${window_minutes}m;
-union isfuzzy=true
+// Hunting: failed logins from every authentication source, in one schema.
+// Same logic as the brute-force rule, without the threshold. Change the time range as needed.
+let AuthFailures = union isfuzzy=true
     (WebAppAudit_CL
         | extend e = parse_json(RawData)
         | where tostring(e.event) == "login_failed"
@@ -27,13 +22,8 @@ union isfuzzy=true
         | where tostring(column_ifexists("EventResult", "")) =~ "Failure"
         | project TimeGenerated, Source = "Okta",
                   Account  = tostring(column_ifexists("ActorUsername", "")),
-                  SourceIP = tostring(column_ifexists("SrcIpAddr", "")))
-| where TimeGenerated > ago(window)
-| where isnotempty(SourceIP) and SourceIP != "-"
-| summarize FailedAttempts = count(),
-            Sources  = make_set(Source),
-            Accounts = make_set(Account, 20),
-            FirstSeen = min(TimeGenerated),
-            LastSeen  = max(TimeGenerated)
-    by SourceIP
-| where FailedAttempts >= threshold
+                  SourceIP = tostring(column_ifexists("SrcIpAddr", "")));
+AuthFailures
+| where TimeGenerated > ago(7d)
+| summarize Failures = count(), Accounts = make_set(Account, 20) by SourceIP, Source
+| order by Failures desc

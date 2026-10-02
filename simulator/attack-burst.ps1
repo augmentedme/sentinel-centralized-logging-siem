@@ -4,7 +4,7 @@
     this workstation, so the alerts fire with an external source IP.
 
 .DESCRIPTION
-    For demonstrating the brute-force and web scanning analytics rules.
+    For end-to-end testing of the brute-force and web scanning analytics rules.
     Only run this against your own web-01 VM.
 
 .EXAMPLE
