@@ -43,7 +43,7 @@ Follow documents 02 to 06 in order to build the environment from scratch.
 ## Repository structure
 
 ```
-terraform/          Logging platform as code: workspace, Sentinel, custom tables, DCE and DCRs,
+terraform/          Logging platform as code: workspace, Sentinel, custom tables, DCE (Data Collection Endpoint) and DCRs (Data Collection Rules),
                     Activity Log export, retention, analytics rules, workbook, budget
 detections/         KQL for analytics rules (templated thresholds) and hunting queries
 workbooks/          Security Overview workbook definition (JSON)
