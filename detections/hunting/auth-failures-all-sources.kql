@@ -7,7 +7,7 @@ let AuthFailures = union isfuzzy=true
         | project TimeGenerated, Source = "Web app", Account = tostring(e.user), SourceIP = tostring(e.src_ip)),
     (Syslog
         | where Facility in ("auth", "authpriv") and ProcessName == "sshd"
-        | where SyslogMessage has_any ("Failed password", "Invalid user")
+        | where SyslogMessage startswith_cs "Failed password" or SyslogMessage startswith_cs "Invalid user"
         | extend SourceIP = extract(@"from (\d{1,3}(?:\.\d{1,3}){3})", 1, SyslogMessage),
                  Account  = extract(@"(?:[Ii]nvalid user|Failed password for(?: invalid user)?) (\S+)", 1, SyslogMessage)
         | project TimeGenerated, Source = "Linux SSH", Account, SourceIP),
