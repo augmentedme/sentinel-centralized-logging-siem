@@ -5,7 +5,7 @@
 | Windows system logs | `win-01` (Windows Server 2025) | Azure Monitor Agent, `dcr-windows-security` | `SecurityEvent`, `Event` |
 | Cloud provider | Azure subscription Activity Log | Diagnostic setting (Terraform) | `AzureActivity` |
 | Directory service | Microsoft Entra ID | Sentinel Entra ID connector | `SigninLogs`, `AuditLogs` |
-| SaaS application | Okta System Log API | Sentinel Okta connector (API polling) | shown on the connector page |
+| SaaS application | Okta System Log API | Sentinel Okta connector (API polling) | `OktaV2_CL` |
 
 Each step says **where** to run it: **Workstation** (VS Code terminal on your Windows machine, repo root), **Portal** (portal.azure.com), **Defender** (security.microsoft.com), **Entra** (entra.microsoft.com) or **Okta** (your Okta admin console).
 
@@ -27,7 +27,7 @@ Each step says **where** to run it: **Workstation** (VS Code terminal on your Wi
 | Availability options | No infrastructure redundancy required |
 | Security type | Trusted launch virtual machines (default) |
 | Image | Windows Server 2025 Datacenter: Azure Edition - x64 Gen2 |
-| Size | Standard_B2ls_v2 (2 vCPU, 4 GiB). If unavailable in your region, any 2 vCPU / 4 GiB size such as Standard_B2s.. |
+| Size | Standard_B2ls_v2 (2 vCPU, 4 GiB). If unavailable in your region, any 2 vCPU / 4 GiB size such as Standard_B2s. |
 | Username | `siemadmin` (not `admin` or `administrator`) |
 | Password | Long random password, saved in your password manager first |
 | Public inbound ports | Allow selected ports: RDP (3389) |
@@ -47,7 +47,7 @@ Each step says **where** to run it: **Workstation** (VS Code terminal on your Wi
 
 **Review + create > Create.** When it finishes, open the VM and note its **Public IP address**.
 
-If creation fails with a **quota** error, check **Subscriptions > Usage + quotas** for "Total Regional vCPUs" and "Standard BS Family vCPUs" in Australia East (web-01 and win-01 need 4 together).
+If creation fails with a **quota** error, check **Subscriptions > Usage + quotas** for "Total Regional vCPUs" and the B-series family quotas ("Standard BSv2 Family vCPUs" for B2ls_v2, "Standard BS Family vCPUs" for B2s) in Australia East. web-01 and win-01 need 4 vCPUs together.
 
 ### Step A2: Restrict RDP to your IP (Portal)
 
@@ -138,6 +138,8 @@ The Okta API token has the same permissions as the user who created it. It shoul
 2. **Microsoft Sentinel > Configuration > Data connectors**, search `Okta`. If there are several versions, choose the one that does **not** mention "Azure Functions" (the codeless/polling connector).
 3. **Open connector page**. Enter your Okta domain (for example `integrator-1234567.okta.com`, without `https://`) and the API token. Click **Connect**.
 
+4. Confirm the connector page lists `OktaV2_CL` as the destination table.
+
 The token is stored by the Sentinel connector, never in this repository.
 
 ### Step D3: Generate Okta activity (browser)
@@ -200,10 +202,22 @@ AuditLogs
 ```
 
 ```kusto
-// SaaS: Okta (replace OktaV2_CL with the table name from the connector page)
+// SaaS: Okta System Log (latest events)
 OktaV2_CL
+| project TimeGenerated, EventType = EventOriginalType, Result = EventResult,
+          User = ActorUsername, SourceIP = SrcIpAddr
 | order by TimeGenerated desc
 | take 20
+```
+
+`take 20` returns only the 20 most recent rows. To see activity across the whole collection period, summarise by day instead (set the time range picker to 7 days if it does not switch automatically):
+
+```kusto
+// SaaS: Okta daily activity
+OktaV2_CL
+| where TimeGenerated > ago(7d)
+| summarize Events = count(), Failures = countif(EventResult =~ "Failure") by Day = bin(TimeGenerated, 1d)
+| order by Day asc
 ```
 
 ## Simulated and real activity
@@ -215,7 +229,7 @@ OktaV2_CL
 | Entra ID | Manual sign-ins as alice and bob (wrong and correct passwords) |
 | Okta | Manual sign-ins as the Okta test user |
 
-To trigger Windows failures on demand (for example during a demo), run this through **Run command**:
+To trigger Windows failures on demand (for example to test the brute-force alert), run this through **Run command**:
 
 ```powershell
 & 'C:\ProgramData\SIEM\win-sim.ps1' -Burst
@@ -233,7 +247,7 @@ To trigger Windows failures on demand (for example during a demo), run this thro
 
 | Symptom | Fix |
 |---|---|
-| VM creation fails with a quota error | See Step A1 note. Use Standard_B2s, or request a quota increase. |
+| VM creation fails with a quota error | Check **Subscriptions > Usage + quotas** in Australia East. If the B-series v2 family is at its limit, choose a size from a family with free quota (for example Standard_B2s). If **Total Regional vCPUs** is at its limit, request a quota increase or free up vCPUs. |
 | Run command output shows 0 failed logons | Rerun the script; if still 0, RDP in and run `auditpol /get /subcategory:Logon` to confirm failure auditing is enabled. |
 | No rows in `SecurityEvent` after 20 minutes | Confirm win-01 is listed under `dcr-windows-security > Resources`, and the VM has the `AzureMonitorWindowsAgent` extension (**win-01 > Extensions + applications**). |
 | `SigninLogs` empty | Confirm the P1/P2 licence (C1), and that Sign-In Logs is ticked on the connector (C2). The first logs can take up to 30 minutes. |
