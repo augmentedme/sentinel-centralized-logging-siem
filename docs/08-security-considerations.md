@@ -45,7 +45,7 @@ A logging platform holds sensitive data and is a target in its own right: an att
 - Windows Event ID 1102 (audit log cleared) is collected, so tampering with the local Security log is visible.
 - Logs are copied off the hosts within minutes, so deleting local files does not remove the central copy.
 - Log rotation is configured for both collected files so disks do not fill and stop logging.
-- The workbook's ingestion health panel flags any source silent for more than 60 minutes.
+- The workbook's ingestion health panel flags any source silent longer than expected (60 minutes for continuous sources, 24 hours for Azure Activity, Entra ID and Okta).
 - Daily cap and budget alerts protect against cost-driven outages and runaway spend.
 
 ## Privacy

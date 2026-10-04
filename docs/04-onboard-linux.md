@@ -207,7 +207,7 @@ Syslog
 - Secrets are generated on the host, stored root-only in `/opt/siem/.env`, injected as environment variables, and never committed.
 - Passwords are hashed in memory, unknown usernames get a dummy hash check (no timing-based user enumeration), and audit records are JSON-encoded (no log injection). Passwords are never logged.
 - SSH is key-only and limited to the administrator's IP by the NSG; ufw adds a host-level layer.
-- Known demo limitations, listed as improvements: HTTP only (production would use TLS with a managed certificate), no CSRF tokens, and no account lockout (left out so brute-force attempts stay visible for detection).
+- Known limitations of this environment, listed as improvements: HTTP only (production would use TLS with a managed certificate), no CSRF tokens, and no account lockout (left out so brute-force attempts stay visible for detection).
 
 ## Troubleshooting
 

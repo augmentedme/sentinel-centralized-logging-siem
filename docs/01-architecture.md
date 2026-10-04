@@ -41,7 +41,7 @@ All logs are collected into a single Log Analytics workspace, `law-siem`, with M
 
 | Resource | Size | Notes |
 |---|---|---|
-| `web-01` | Standard_B2s, Ubuntu 24.04 | Nginx, Docker, Staff Portal, simulator |
-| `win-01` | Standard_B2ms, Windows Server 2025 | Audit policy, failed-logon simulator |
+| `web-01` | Standard_B2ls_v2 (2 vCPU, 4 GiB), Ubuntu 24.04 | Nginx, Docker, Staff Portal, simulator |
+| `win-01` | Standard_B2ls_v2 (2 vCPU, 4 GiB), Windows Server 2025 | Audit policy, failed-logon simulator |
 | `law-siem` | Pay-as-you-go, 2 GB/day cap | Sentinel enabled |
 | Region | Australia East | All resources |

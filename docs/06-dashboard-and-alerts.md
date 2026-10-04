@@ -19,7 +19,7 @@ The workbook has a **Time range** parameter (1 hour to 14 days, default 7 days) 
 
 | Panel | Visualisation | What it answers |
 |---|---|---|
-| Ingestion health | Table with status icons | Is every source still sending? Flags a source as "Check source" when it has been silent longer than expected: 60 minutes for continuous sources, 24 hours for Entra ID and Okta, which only log when someone signs in. |
+| Ingestion health | Table with status icons | Is every source still sending? Flags a source as "Check source" when it has been silent longer than expected: 60 minutes for continuous sources, 24 hours for Azure Activity, Entra ID and Okta, which only log when someone acts or signs in. |
 | Events per source over time | Time chart | Volume trend for all eight sources. |
 | Failed logins by source over time | Time chart | Authentication failures from the web app, Linux SSH, Windows, Entra ID and Okta in one view. |
 | Top 10 source IPs with failed logins | Table | Which IPs are attacking, against which sources and how many accounts. |
@@ -77,7 +77,9 @@ OktaV2_CL
 
 Expected: rows with `EventResult` showing failures and successes for your test user.
 
-### Step 2: Deploy the dashboard and updated rules (Workstation)
+### Step 2: Deploy the dashboard and rules (Workstation)
+
+On a fresh build these resources were already created by the `terraform apply` in 03, so the plan below shows no changes. Run it after changing the workbook JSON, the KQL or the rule variables.
 
 ```powershell
 $env:ARM_SUBSCRIPTION_ID = az account show --query id -o tsv
@@ -86,7 +88,7 @@ terraform validate
 terraform plan -out tfplan
 ```
 
-Expected plan: **1 to add** (the workbook) and **2 to change** (the two rules). Then:
+Review the plan: it should list only the workbook and rule resources you changed. Then:
 
 ```powershell
 terraform apply tfplan
@@ -129,11 +131,12 @@ Open each one. Check the IP entity, the alert's **query results** (FailedAttempt
 
 Take screenshots of the dashboard and both incidents. Save them as:
 
-- `docs/images/dashboard.png`
+- `docs/images/dashboard-1.png`
+- `docs/images/dashboard-2.png`
 - `docs/images/incident-bruteforce.png`
 - `docs/images/incident-webscan.png`
 
-Home and public IP addresses are redacted before committing. Only `127.0.0.1` and private addresses are left visible..
+Home and public IP addresses are redacted before committing. Only `127.0.0.1` and private addresses are left visible.
 
 ## Tuning an alert threshold
 

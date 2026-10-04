@@ -17,6 +17,7 @@ This step builds the logging system itself with Terraform. Client VMs are onboar
 | Diagnostic setting | `activity-log-to-sentinel` | Subscription Activity Log to the workspace |
 | Table retention | built-in and custom tables | Hot and long-term retention per table |
 | Analytics rules | brute force, web scanning | Alerts that create Sentinel incidents |
+| Workbook | SIEM Security Overview | Dashboard (see 06) |
 | Budget | `budget-siem-demo` | Email alerts at 50% actual and 90% forecast spend |
 
 ## Steps
@@ -58,12 +59,14 @@ terraform apply tfplan
 
 Read the plan before applying: every resource listed should match the table above.
 
-**5. Verify in the portal.**
+**5. Verify.**
 
-- **Microsoft Sentinel** lists workspace `law-siem`.
-- **Sentinel > Analytics > Active rules** shows the two rules.
-- **Log Analytics workspace > Tables** shows `NginxAccess_CL` and `WebAppAudit_CL` with their retention values.
-- **Monitor > Data Collection Rules** shows the three DCRs.
+Sentinel is managed in the Microsoft Defender portal (security.microsoft.com); the Azure portal Sentinel pages redirect there.
+
+- **Defender > Microsoft Sentinel > Configuration > Analytics** shows the two rules.
+- **Defender > Microsoft Sentinel > Threat management > Workbooks > My workbooks** shows *SIEM Security Overview*.
+- **Azure portal > Log Analytics workspaces > law-siem > Tables** shows `NginxAccess_CL` and `WebAppAudit_CL` with their retention values.
+- **Azure portal > Monitor > Data Collection Rules** shows the three DCRs.
 
 ## Changing settings later
 
