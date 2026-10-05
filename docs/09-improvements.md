@@ -11,6 +11,9 @@ Listed in suggested order of value.
 5. **Watchlists and threat intelligence.** Allow-list known scanners and internal IPs; enrich IPs with a threat intelligence feed.
 6. **UEBA.** Enable Sentinel User and Entity Behaviour Analytics for baseline-driven anomaly detection.
 7. **Account lockout and MFA.** Progressive lockout in the application and MFA for the admin role.
+8. **Alert quality from live data.** In the first days online, about 205 internet IPs probed the web server. Raise scanning severity only when a sensitive-path probe returns 2xx, and auto-close low-severity scanner incidents with no successful requests.
+9. **Password spraying.** Add a rule that counts failures per account across all IPs, since the current rule groups by IP and can miss distributed attacks.
+10. **Daily cap monitoring.** Alert when ingestion approaches the daily cap; if the cap is reached, collection stops and creates a blind spot.
 
 ## Platform
 
