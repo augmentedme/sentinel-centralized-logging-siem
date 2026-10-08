@@ -37,6 +37,7 @@ Follow documents 02 to 06 in order to build the environment from scratch.
 
 ## Highlights
 - **Real-world validation:** in its first six days online (2–8 October 2026), the public web server was probed by 401 external IPs from 35 countries, including reconnaissance for exposed `.git` and `.env` files and botnet exploit attempts (PHP-CGI CVE-2024-4577, PHPUnit CVE-2017-9841). Cross-source queries confirmed no attempt succeeded.
+   ![External IPs by country](docs/images/external-ips-by-country.png)
 
 - **Dashboard:** *SIEM Security Overview* workbook with ingestion health, volume per source, failed logins across all authentication sources, top attacking IPs, web status trends, probed paths, application events and incidents. Defined in `workbooks/security-overview.json`.
 - **Alerts:** *Brute-force login attempts across sources* (web app, SSH, Windows, Entra ID and Okta normalised and counted together; MITRE T1110) and *Web vulnerability scanning* (MITRE T1595). KQL in `detections/`, thresholds and timing as Terraform variables.
